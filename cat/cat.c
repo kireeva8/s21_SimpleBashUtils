@@ -1,111 +1,86 @@
-#include <fcntl.h> //почитать
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-
-typedef struct {
-  bool b, e, n, s, t;
-  bool error;
-} cat_flags;
-
-bool cat_no_args(int fd, char *name);
-bool cat_args(int argc, char **argv);
-bool parse_flags(cat_flags flag, char *argv, char *name);
-//bool cat_perfome_flags(cat_flags *flag, int argc, char *name, char *name);
+#include "s21_cat.h"
 
 int main(int argc, char **argv) {
+  CatFlags flags = {0, 0, 0, 0, 0, 0, 1};
   if (argc == 1) {
-    if (!cat_no_args(STDIN_FILENO, argv[0])) {  // if можно убрать , хз зачем он
-      return 1;
-    }  //разобраться
+    print_file(stdin, &flags);
   } else {
-    if (cat_args(argc, argv)) {
-      return 1;
+    for (int i = 1; i < argc; i++) {
+      if (flags.file == 1) {
+        parse_flags(argv, &flags, i);
+      }
+      if (flags.file == 0) {
+        FILE *fp = fopen(argv[i], "r");
+        if (!fp) {
+          fprintf(stderr, "cat: %s: No such file or directory", argv[i]);
+          continue;
+        }
+        print_file(fp, &flags);
+        fclose(fp);
+      }
     }
   }
   return 0;
 }
-
-bool cat_no_args(int fd, char *name) {
-  char buf[4096];
-  int bytes_read;
-
-  if (fd == -1) {
-    perror(name);  // выведет соответсвующие сообщение об ошибке
-    return false;
-  }
-
-  bytes_read = read(fd, buf, 4096);  // возвращает 1 или -1
-  while (bytes_read > 0) {
-    printf("%.*s", bytes_read, buf);
-    bytes_read = read(fd, buf, 4096);
-  }
-  return bytes_read != -1;  // если stdin не существует (обработка ошибки)
-                            //если не равно -1, значит все выполнилась
-                            //правильно, вернется тру, иначе фолс
+void parse_flags(char **argv, CatFlags *flags, int i) {
+  if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--number-nonblank") == 0) {
+    flags->b = 1;
+  } else if (strcmp(argv[i], "-n") == 0 || strcmp(argv[i], "--number") == 0) {
+    flags->n = 1;
+  } else if (strcmp(argv[i], "-s") == 0 ||
+             strcmp(argv[i], "--squeeze-blank") == 0) {
+    flags->s = 1;
+  } else if (strcmp(argv[i], "-e") == 0) {
+    flags->e = 1;
+    flags->v = 1;
+  } else if (strcmp(argv[i], "-E") == 0) {
+    flags->e = 1;
+  } else if (strcmp(argv[i], "-t") == 0) {
+    flags->t = 1;
+    flags->v = 1;
+  } else if (strcmp(argv[i], "-T") == 0) {
+    flags->t = 1;
+  } else if (strcmp(argv[i], "-v") == 0) {
+    flags->v = 1;
+  } else
+    flags->file = 0;
 }
 
-bool cat_args(int argc, char **argv) {
-  cat_flags flag = {0, 0, 0, 0, 0, true};
-  for (int i = 1; i != argc; ++i) {
-    if (*argv[i] == '-') {
-      if (!parse_flags(flag, argv[i], argv[0])) {
-        return false;
+void print_file(FILE *fp, CatFlags *flags) {
+  char sym, prev = '\n'; // for iteration
+  int temp = 0, count = 1; // temp - count '\n'
+  while ((sym = fgetc(fp)) != EOF) {
+    if (flags->s && prev == '\n') {
+      if (sym == '\n') {
+        temp++;
+      }
+      if (sym != '\n') {
+        temp = 0;
       }
     }
-  }
-  if (!(flag.b || flag.e || flag.n || flag.s || flag.t)) {
-    for (int i = 1; i != argc; ++i) {
-      if (*argv[i] != '-') {
-        if (!cat_no_args(open(argv[i], O_RDONLY), argv[0])) {
-          flag.error = false;
-        }
+    if (sym == '\n' && (!flags->s || temp < 2)) {
+      if (flags->n && prev == '\n' && !flags->b) {
+        printf("%6d\t", count++);
+      }
+      if (flags->e) {
+        printf("$");
+      }
+      printf("%c", sym);
+    }
+    if (sym != '\n') {
+      if ((prev == '\n') && (flags->b || flags->n)) {
+        printf("%6d\t", count++);
+      }
+      if (sym < 32 && sym != 9 && sym != 10 && flags->v) {
+        printf("^%c", sym + 64);
+      } else if (sym == 127 && flags->v) {
+        printf("^%c", sym - 64);
+      } else if (sym == '\t' && flags->t) {
+        printf("^I");
+      } else {
+        printf("%c", sym);
       }
     }
+    prev = sym;
   }
-  return flag.error;
-}
-
-bool parse_flags(cat_flags flag, char *argv, char *name) {
-  ++argv;  //  пропускаем первый '-'
-  if (*argv == '-') {
-    ++argv;
-    if (strcmp(argv, "number-nonblank") == 0) {
-      flag.b = true;
-    } else if (strcmp(argv, "number") == 0) {
-      flag.n = true;
-    } else if (strcmp(argv, "squeeze-blank") == 0) {
-      flag.s = true;
-    } else {
-      dprintf(STDERR_FILENO, "%s: illegal option '--%s'\n", name, argv);
-      return false;
-    }
-    return true;
-  }
-  for (char *i = argv; *i != '\0'; ++i) {
-    switch (*i) {
-      case 'b':
-        flag.b = true;
-        break;
-      case 'e':
-        flag.e = true;
-        break;
-      case 'n':
-        flag.n = true;
-        break;
-      case 's':
-        flag.s = true;
-        break;
-      case 't':
-        flag.t = true;
-        break;
-      default:
-        dprintf(STDERR_FILENO, "%s: %s '%s'\n", name, "illegal option --",
-                argv);
-        // flag.error = false;
-        return false;
-    }
-  }
-  return true;
 }
