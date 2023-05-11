@@ -23,6 +23,15 @@ declare -a extra=(
 "-v test_5_cat.txt"
 )
 
+flags=(
+    "b"
+    "e"
+    "n"
+    "s"
+    "t"
+    "v"
+)
+
 testing()
 {
     t=$(echo $@ | sed "s/VAR/$var/")
@@ -116,6 +125,41 @@ do
         done
     done
 done
+# 2 сдвоенных параметра
+for var1 in "${flags[@]}"
+do
+    for var2 in "${flags[@]}"
+    do
+        if [ $var1 != $var2 ]
+        then
+            for i in "${tests[@]}"
+            do
+                var="-$var1$var2"
+                testing $i
+            done
+        fi
+    done
+done
+
+# 3 строенных параметра
+for var1 in "${flags[@]}"
+do
+    for var2 in "${flags[@]}"
+    do
+        for var3 in "${flags[@]}"
+        do
+            if [ $var1 != $var2 ] && [ $var2 != $var3 ] && [ $var1 != $var3 ]
+            then
+                for i in "${tests[@]}"
+                do
+                    var="-$var1$var2$var3"
+                    testing $i
+                done
+            fi
+        done
+    done
+done
+
 
 echo "\033[31mFAIL: $FAIL\033[0m"
 echo "\033[32mSUCCESS: $SUCCESS\033[0m"

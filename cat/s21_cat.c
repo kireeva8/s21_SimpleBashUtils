@@ -23,32 +23,46 @@ int main(int argc, char **argv) {
   return 0;
 }
 void parse_flags(char **argv, CatFlags *flags, int i) {
-  if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--number-nonblank") == 0) {
+  if (strcmp(argv[i], "--number-nonblank") == 0) {
     flags->b = 1;
-  } else if (strcmp(argv[i], "-n") == 0 || strcmp(argv[i], "--number") == 0) {
+  } else if (strcmp(argv[i], "--number") == 0) {
     flags->n = 1;
-  } else if (strcmp(argv[i], "-s") == 0 ||
-             strcmp(argv[i], "--squeeze-blank") == 0) {
+  } else if (strcmp(argv[i], "--squeeze-blank") == 0) {
     flags->s = 1;
-  } else if (strcmp(argv[i], "-e") == 0) {
-    flags->e = 1;
-    flags->v = 1;
-  } else if (strcmp(argv[i], "-E") == 0) {
-    flags->e = 1;
-  } else if (strcmp(argv[i], "-t") == 0) {
-    flags->t = 1;
-    flags->v = 1;
-  } else if (strcmp(argv[i], "-T") == 0) {
-    flags->t = 1;
-  } else if (strcmp(argv[i], "-v") == 0) {
-    flags->v = 1;
-  } else
+  } else if ((argv[i][0] != '-')) {
     flags->file = 0;
+  } else {
+    int j = 1;
+    while (argv[i][j] != '\0') {
+      if (argv[i][j] == 'b') {
+        flags->b = 1;
+      } else if (argv[i][j] == 'n') {
+        flags->n = 1;
+      } else if (argv[i][j] == 's') {
+        flags->s = 1;
+      } else if (argv[i][j] == 'e') {
+        flags->e = 1;
+        flags->v = 1;
+      } else if (argv[i][j] == 'E') {
+        flags->e = 1;
+      } else if (argv[i][j] == 't') {
+        flags->t = 1;
+        flags->v = 1;
+      } else if (argv[i][j] == 'T') {
+        flags->e = 1;
+      } else if (argv[i][j] == 'v') {
+        flags->v = 1;
+      } else {
+        flags->file = 0;
+      }
+      j++;
+    }
+  }
 }
 
 void print_file(FILE *fp, CatFlags *flags) {
-  char sym, prev = '\n'; // for iteration
-  int temp = 0, count = 1; // temp - count '\n'
+  char sym, prev = '\n';    // for iteration
+  int temp = 0, count = 1;  // temp - count '\n'
   while ((sym = fgetc(fp)) != EOF) {
     if (flags->s && prev == '\n') {
       if (sym == '\n') {
