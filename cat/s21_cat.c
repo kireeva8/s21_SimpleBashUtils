@@ -49,7 +49,7 @@ void parse_flags(char **argv, CatFlags *flags, int i) {
         flags->t = 1;
         flags->v = 1;
       } else if (argv[i][j] == 'T') {
-        flags->e = 1;
+        flags->t = 1;
       } else if (argv[i][j] == 'v') {
         flags->v = 1;
       } else {
